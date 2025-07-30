@@ -1,0 +1,5 @@
+[console_scripts]
+estimate_node = crop_estimation.estimate_node:main
+odom_node = crop_estimation.odom_node:main
+um7_node = crop_estimation.um7_node:main
+

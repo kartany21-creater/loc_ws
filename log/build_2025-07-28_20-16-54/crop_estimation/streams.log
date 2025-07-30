@@ -1,0 +1,26 @@
+[0.536s] Invoking command in '/home/maffin21/loc_ws/src/crop_estimation': PYTHONPATH=/home/maffin21/loc_ws/build/crop_estimation/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/crop_estimation build --build-base /home/maffin21/loc_ws/build/crop_estimation/build install --record /home/maffin21/loc_ws/build/crop_estimation/install.log --single-version-externally-managed install_data
+[0.729s] running egg_info
+[0.729s] writing ../../build/crop_estimation/crop_estimation.egg-info/PKG-INFO
+[0.730s] writing dependency_links to ../../build/crop_estimation/crop_estimation.egg-info/dependency_links.txt
+[0.730s] writing entry points to ../../build/crop_estimation/crop_estimation.egg-info/entry_points.txt
+[0.730s] writing requirements to ../../build/crop_estimation/crop_estimation.egg-info/requires.txt
+[0.730s] writing top-level names to ../../build/crop_estimation/crop_estimation.egg-info/top_level.txt
+[0.731s] reading manifest file '../../build/crop_estimation/crop_estimation.egg-info/SOURCES.txt'
+[0.732s] writing manifest file '../../build/crop_estimation/crop_estimation.egg-info/SOURCES.txt'
+[0.732s] running build
+[0.732s] running build_py
+[0.732s] copying crop_estimation/um7_node.py -> /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation
+[0.732s] running install
+[0.733s] running install_lib
+[0.733s] copying /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation/um7_node.py -> /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation
+[0.733s] byte-compiling /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation/um7_node.py to um7_node.cpython-310.pyc
+[0.734s] running install_data
+[0.734s] running install_egg_info
+[0.735s] removing '/home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation-0.0.0-py3.10.egg-info' (and everything under it)
+[0.736s] Copying ../../build/crop_estimation/crop_estimation.egg-info to /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation-0.0.0-py3.10.egg-info
+[0.736s] running install_scripts
+[0.751s] Installing estimate_node script to /home/maffin21/loc_ws/install/crop_estimation/lib/crop_estimation
+[0.752s] Installing odom_node script to /home/maffin21/loc_ws/install/crop_estimation/lib/crop_estimation
+[0.752s] Installing um7_node script to /home/maffin21/loc_ws/install/crop_estimation/lib/crop_estimation
+[0.752s] writing list of installed files to '/home/maffin21/loc_ws/build/crop_estimation/install.log'
+[0.769s] Invoked command in '/home/maffin21/loc_ws/src/crop_estimation' returned '0': PYTHONPATH=/home/maffin21/loc_ws/build/crop_estimation/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/crop_estimation build --build-base /home/maffin21/loc_ws/build/crop_estimation/build install --record /home/maffin21/loc_ws/build/crop_estimation/install.log --single-version-externally-managed install_data
