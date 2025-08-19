@@ -1,0 +1,5 @@
+  File "/home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation/estimate_node.py", line 173
+    speed = dz_mean し/ 0.3
+                    ^^^
+SyntaxError: invalid syntax
+

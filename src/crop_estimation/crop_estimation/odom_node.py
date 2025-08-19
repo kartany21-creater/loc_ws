@@ -6,105 +6,86 @@ from geometry_msgs.msg import TransformStamped
 import tf2_ros
 import math
 import csv
-import os
 from datetime import datetime
+
 
 class OdomPublisher(Node):
     def __init__(self):
         super().__init__('odom_node')
 
-        # === パラメータ ===
+        # パラメータ取得（サンプル周期）
         self.declare_parameter('sample_time', 0.3)
         self.sample_time = self.get_parameter('sample_time').value
 
-        # === 変数初期化 ===
-        self.z_velocity = 0.0
-        self.yaw = 0.0
-        self.theta = 0.0  # yaw in radians
-
+        # 初期位置・角度
         self.x = 0.0
         self.y = 0.0
-        self.elapsed_time = 0.0
+        self.theta = 0.0
+        self.z = 0.0
 
-        # === CSVログ出力用 ===
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.csv_path = f'odom_log_{timestamp}.csv'
-        with open(self.csv_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['time', 'x', 'y', 'yaw_deg'])
+        # Publisher
+        self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
 
-        # === サブスクライバ ===
-        self.subscription_vel = self.create_subscription(
-            Float64,
-            '/z_velocity',
-            self.z_velocity_callback,
-            10)
-
-        self.subscription_yaw = self.create_subscription(
-            Float64,
-            '/yaw',
-            self.yaw_callback,
-            10)
-
-        # === パブリッシャ・TF ===
-        self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
+        # TFブロードキャスタ
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-        # === タイマー起動 ===
+        # Subscriber
+        self.sub_z = self.create_subscription(Float64, 'z_estimate', self.z_callback, 10)
+        self.sub_theta = self.create_subscription(Float64, 'theta_estimate', self.theta_callback, 10)
+
+        # タイマ
         self.timer = self.create_timer(self.sample_time, self.timer_callback)
 
-    def z_velocity_callback(self, msg):
-        self.z_velocity = msg.data
+        # CSVファイル初期化
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.csv_path = f"odom_log_{now}.csv"
+        with open(self.csv_path, "w") as f:
+            f.write("time,x[m],y[m],theta[deg]\n")
 
-    def yaw_callback(self, msg):
-        self.yaw = msg.data
-        self.theta = math.radians(self.yaw)
+    def z_callback(self, msg):
+        self.z = msg.data
+
+    def theta_callback(self, msg):
+        self.theta = msg.data
 
     def timer_callback(self):
-        # === 自己位置更新 ===
-        dx = self.z_velocity * self.sample_time * math.cos(self.theta)
-        dy = self.z_velocity * self.sample_time * math.sin(self.theta)
+        # ロボットZ方向の速度をYaw角で世界座標に変換
+        dx = self.z * math.cos(self.theta)
+        dy = self.z * math.sin(self.theta)
+
+        # 現在位置を更新（積分）
         self.x += dx
         self.y += dy
-        self.elapsed_time += self.sample_time
 
-        # === Odometry メッセージ作成 ===
+        # オドメトリメッセージ作成
         odom_msg = Odometry()
-        now = self.get_clock().now().to_msg()
-        odom_msg.header.stamp = now
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
         odom_msg.header.frame_id = 'odom'
         odom_msg.child_frame_id = 'base_link'
-
         odom_msg.pose.pose.position.x = self.x
         odom_msg.pose.pose.position.y = self.y
         odom_msg.pose.pose.position.z = 0.0
+        odom_msg.pose.pose.orientation.z = math.sin(self.theta / 2.0)
+        odom_msg.pose.pose.orientation.w = math.cos(self.theta / 2.0)
+        self.odom_pub.publish(odom_msg)
 
-        qz = math.sin(self.theta / 2.0)
-        qw = math.cos(self.theta / 2.0)
-        odom_msg.pose.pose.orientation.z = qz
-        odom_msg.pose.pose.orientation.w = qw
-
-        odom_msg.twist.twist.linear.x = self.z_velocity
-        odom_msg.twist.twist.angular.z = 0.0
-
-        self.odom_publisher.publish(odom_msg)
-
-        # === TF 送信 ===
+        # TFブロードキャスト
         t = TransformStamped()
-        t.header.stamp = now
+        t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = 'odom'
         t.child_frame_id = 'base_link'
         t.transform.translation.x = self.x
         t.transform.translation.y = self.y
         t.transform.translation.z = 0.0
-        t.transform.rotation.z = qz
-        t.transform.rotation.w = qw
+        t.transform.rotation.z = math.sin(self.theta / 2.0)
+        t.transform.rotation.w = math.cos(self.theta / 2.0)
         self.tf_broadcaster.sendTransform(t)
 
-        # === CSVに記録 ===
-        with open(self.csv_path, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([round(self.elapsed_time, 3), round(self.x, 4), round(self.y, 4), round(self.yaw, 2)])
+        # ログ保存
+        timestamp = self.get_clock().now().to_msg().sec + self.get_clock().now().to_msg().nanosec * 1e-9
+        with open(self.csv_path, "a") as f:
+            f.write(f"{timestamp:.3f},{self.x:.3f},{self.y:.3f},{math.degrees(self.theta):.2f}\n")
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -112,7 +93,4 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
 

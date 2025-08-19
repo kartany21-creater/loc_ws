@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float64
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -8,6 +8,9 @@ import time
 import os
 import json
 from ultralytics import YOLO
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
+from sklearn.cluster import KMeans
 
 def get_bbox_depth_median(depth, x1, y1, x2, y2):
     h, w = depth.shape
@@ -60,10 +63,10 @@ class EKF3DTracker:
         self.prev_z = current_z
         return dz
 
-class EstimateNode(Node):
+class EstimateMultiNode(Node):
     def __init__(self):
-        super().__init__('estimate_node')
-        self.publisher_ = self.create_publisher(Float32MultiArray, 'z_estimate', 10)
+        super().__init__('estimate_multi_node')
+
         self.model = YOLO('/home/maffin21/loc_ws/src/crop_estimation/yolo_model/best.pt')
         self.intr = load_intrinsics('/home/maffin21/loc_ws/src/crop_estimation/camera_intrinsics.json')
 
@@ -74,69 +77,112 @@ class EstimateNode(Node):
         self.pipeline.start(config)
         self.align = rs.align(rs.stream.color)
 
-        self.timer = self.create_timer(0.3, self.timer_callback)
-        self.tracker = None
+        self.trackers = {}
+        self.next_id = 0
 
-        now = time.strftime("%Y%m%d_%H%M%S")
-        self.csv_path = f"/home/maffin21/loc_ws/src/crop_estimation/output/trajectory_{now}.csv"
-        os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
-        with open(self.csv_path, "w") as f:
-            f.write("time,z,speed\n")
+        self.z_pub = self.create_publisher(Float64, '/z_estimate', 10)
+        self.vel_pub = self.create_publisher(Float64, '/z_velocity', 10)
+
+        self.timer = self.create_timer(0.3, self.timer_callback)
 
     def timer_callback(self):
         frames = self.pipeline.wait_for_frames()
-        aligned_frames = self.align.process(frames)
-        color_frame = aligned_frames.get_color_frame()
-        depth_frame = aligned_frames.get_depth_frame()
+        aligned = self.align.process(frames)
+        color_frame = aligned.get_color_frame()
+        depth_frame = aligned.get_depth_frame()
 
         if not color_frame or not depth_frame:
-            self.get_logger().warn("❌ フレーム取得失敗")
+            self.get_logger().warn("フレーム取得失敗")
             return
 
-        color_image = np.asanyarray(color_frame.get_data())
-        depth_image = np.asanyarray(depth_frame.get_data())
+        color = np.asanyarray(color_frame.get_data())
+        depth = np.asanyarray(depth_frame.get_data())
 
-        # YOLO推論
+        results = self.model(color)[0]
         detections = []
-        results = self.model(color_image)[0]
         for box in results.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
-            z = get_bbox_depth_median(depth_image, x1, y1, x2, y2)
-            if z == 0: continue
+            z = get_bbox_depth_median(depth, x1, y1, x2, y2)
+            if z == 0:
+                continue
             cx, cy = (x1 + x2) // 2, y2
             xyz = deproject(cx, cy, z, self.intr)
-            detections.append(xyz)
+            detections.append((cx, cy, xyz))
 
-        if not detections:
-            self.get_logger().warn("⚠️ 株元が検出されませんでした")
-            return
+        predicted = []
+        ids = list(self.trackers.keys())
+        for tid in ids:
+            self.trackers[tid][0].predict()
+            predicted.append(self.trackers[tid][0].get_state())
 
-        target = min(detections, key=lambda p: p[2])  # 最も近い点を使用
+        matched = set()
+        matched_tid_map = {}
+        if predicted and detections:
+            detected_xyz = [d[2] for d in detections]
+            dist_matrix = cdist(predicted, detected_xyz)
+            row_ind, col_ind = linear_sum_assignment(dist_matrix)
+            for r, c in zip(row_ind, col_ind):
+                if dist_matrix[r][c] < 0.3:
+                    tid = ids[r]
+                    self.trackers[tid][0].update(detected_xyz[c])
+                    self.trackers[tid][1] = 0
+                    matched.add(c)
+                    matched_tid_map[c] = tid
 
-        if self.tracker is None:
-            self.tracker = EKF3DTracker(target)
-            return
+        for tid in ids:
+            if tid not in matched_tid_map.values():
+                self.trackers[tid][1] += 1
 
-        self.tracker.predict()
-        self.tracker.update(target)
-        dz = self.tracker.get_z_movement(target[2])
-        speed = dz / 0.3  # m/s
+        to_delete = [tid for tid, (_, miss) in self.trackers.items() if miss > 1]
+        for tid in to_delete:
+            del self.trackers[tid]
 
-        current_z = self.tracker.get_state()[2]
+        for i, (cx, cy, xyz) in enumerate(detections):
+            if i not in matched:
+                self.trackers[self.next_id] = [EKF3DTracker(xyz), 0]
+                self.next_id += 1
 
-        # Publish
-        msg = Float32MultiArray()
-        msg.data = [current_z, speed]
-        self.publisher_.publish(msg)
+        # --- 推定値のpublish（左右の平均） ---
+        if len(self.trackers) >= 2:
+            z_list = []
+            dz_list = []
 
-        # Save to CSV
-        timestamp = time.time()
-        with open(self.csv_path, "a") as f:
-            f.write(f"{timestamp:.3f},{current_z:.3f},{speed:.3f}\n")
+            # トラッカーのz値を元に左右クラスタリング（画面u座標で）
+            tracker_items = [(tid, t[0].get_state(), t[0]) for tid, t in self.trackers.items()]
+            u_coords = [int(t[1][0] * self.intr['fx'] / t[1][2] + self.intr['ppx']) for t in tracker_items]
+            if len(u_coords) >= 2:
+                kmeans = KMeans(n_clusters=2, n_init='auto').fit(np.array(u_coords).reshape(-1, 1))
+                labels = kmeans.labels_
+
+                left_zs, right_zs = [], []
+                left_dz, right_dz = [], []
+
+                for i, (tid, state, tracker) in enumerate(tracker_items):
+                    z = state[2]
+                    dz = tracker.get_z_movement(z)
+                    if labels[i] == np.argmin(kmeans.cluster_centers_):
+                        left_zs.append(z)
+                        left_dz.append(dz)
+                    else:
+                        right_zs.append(z)
+                        right_dz.append(dz)
+
+                if left_zs and right_zs:
+                    z_mean = (np.mean(left_zs) + np.mean(right_zs)) / 2
+                    dz_mean = (np.mean(left_dz) + np.mean(right_dz)) / 2
+                    speed = dz_mean / 0.3
+
+                    msg_z = Float64()
+                    msg_z.data = dz_mean
+                    self.z_pub.publish(msg_z)
+
+                    msg_v = Float64()
+                    msg_v.data = speed
+                    self.vel_pub.publish(msg_v)
 
 def main(args=None):
     rclpy.init(args=args)
-    node = EstimateNode()
+    node = EstimateMultiNode()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

@@ -1,0 +1,30 @@
+running egg_info
+writing ../../build/crop_estimation/crop_estimation.egg-info/PKG-INFO
+writing dependency_links to ../../build/crop_estimation/crop_estimation.egg-info/dependency_links.txt
+writing entry points to ../../build/crop_estimation/crop_estimation.egg-info/entry_points.txt
+writing requirements to ../../build/crop_estimation/crop_estimation.egg-info/requires.txt
+writing top-level names to ../../build/crop_estimation/crop_estimation.egg-info/top_level.txt
+reading manifest file '../../build/crop_estimation/crop_estimation.egg-info/SOURCES.txt'
+writing manifest file '../../build/crop_estimation/crop_estimation.egg-info/SOURCES.txt'
+running build
+running build_py
+copying crop_estimation/odom_node.py -> /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation
+copying crop_estimation/estimate_node.py -> /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation
+copying crop_estimation/um7_node.py -> /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation
+running install
+running install_lib
+copying /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation/odom_node.py -> /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation
+copying /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation/estimate_node.py -> /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation
+copying /home/maffin21/loc_ws/build/crop_estimation/build/lib/crop_estimation/um7_node.py -> /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation
+byte-compiling /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation/odom_node.py to odom_node.cpython-310.pyc
+byte-compiling /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation/estimate_node.py to estimate_node.cpython-310.pyc
+byte-compiling /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation/um7_node.py to um7_node.cpython-310.pyc
+running install_data
+running install_egg_info
+removing '/home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation-0.0.0-py3.10.egg-info' (and everything under it)
+Copying ../../build/crop_estimation/crop_estimation.egg-info to /home/maffin21/loc_ws/install/crop_estimation/lib/python3.10/site-packages/crop_estimation-0.0.0-py3.10.egg-info
+running install_scripts
+Installing estimate_node script to /home/maffin21/loc_ws/install/crop_estimation/lib/crop_estimation
+Installing odom_node script to /home/maffin21/loc_ws/install/crop_estimation/lib/crop_estimation
+Installing um7_node script to /home/maffin21/loc_ws/install/crop_estimation/lib/crop_estimation
+writing list of installed files to '/home/maffin21/loc_ws/build/crop_estimation/install.log'

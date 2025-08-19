@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32
+from std_msgs.msg import Float64
 import serial
 import time
 import math
@@ -8,10 +8,10 @@ import math
 class UM7Node(Node):
     def __init__(self):
         super().__init__('um7_node')
-        self.publisher_ = self.create_publisher(Float32, 'yaw', 10)
+        self.publisher_ = self.create_publisher(Float64, 'yaw', 10)
         self.timer = self.create_timer(0.1, self.timer_callback)
 
-        self.port = '/dev/ttyUSB0'
+        self.port = '/dev/ttyUSB1'
         self.baudrate = 115200
         self.serial = None
         self.initial_yaw = None
@@ -42,7 +42,7 @@ class UM7Node(Node):
                         # ラジアン変換
                         yaw_rad = math.radians(adj_yaw)
 
-                        msg = Float32()
+                        msg = Float64()
                         msg.data = yaw_rad
                         self.publisher_.publish(msg)
 
